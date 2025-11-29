@@ -1,0 +1,169 @@
+# =============================================================================
+# ARES7 QM REGIME TURBO FINAL CONFIGURATION
+# =============================================================================
+# 최종 성능:
+#   - Full Sharpe: 3.86
+#   - OOS Sharpe: 4.37
+#   - 연율화 수익률: 67.74%
+#   - MDD: -12.63%
+#   - OOS MDD: -10.10%
+# =============================================================================
+
+strategy:
+  name: "ARES7_QM_REGIME_TURBO"
+  version: "251129_FINAL"
+  description: "Quality-Momentum with Regime Filter and Turbo AARM"
+
+# -----------------------------------------------------------------------------
+# Universe & Time Range
+# -----------------------------------------------------------------------------
+universe:
+  base: "SP100"
+  min_market_cap: 10_000_000_000  # $10B minimum
+  min_avg_volume: 1_000_000       # 1M shares/day minimum
+  exclude_sectors: []              # No exclusions
+
+backtest:
+  start_date: "2016-03-01"
+  end_date: "2025-11-18"
+  initial_capital: 1_000_000
+  benchmark: "SPY"
+
+# -----------------------------------------------------------------------------
+# Data & Point-in-Time
+# -----------------------------------------------------------------------------
+data:
+  pit_delay_days: 90              # SF1 PIT delay for lookahead prevention
+  price_source: "polygon"         # Primary: polygon, fallback: yfinance
+  fundamental_source: "sf1"       # Sharadar SF1
+  
+# -----------------------------------------------------------------------------
+# QM Overlay Parameters (Quality + Momentum)
+# -----------------------------------------------------------------------------
+qm_overlay:
+  enabled: true
+  top_frac: 0.20                  # Top 20% get positive overlay
+  bottom_frac: 0.20               # Bottom 20% get negative overlay
+  overlay_strength: 0.04          # ±4% overlay adjustment
+  
+  # Factor Weights
+  quality_weight: 0.6             # 60% quality
+  momentum_weight: 0.4            # 40% momentum
+  
+  # Quality Metrics (from SF1)
+  quality_factors:
+    - "roe"                       # Return on Equity
+    - "roic"                      # Return on Invested Capital
+    - "grossmargin"               # Gross Margin
+    - "currentratio"              # Current Ratio
+    - "de"                        # Debt/Equity (inverted)
+  
+  # Momentum Metrics
+  momentum_factors:
+    - "ret_6m"                    # 6-month return
+    - "ret_12m_skip_1m"           # 12-month return, skip recent month
+
+# -----------------------------------------------------------------------------
+# Regime Filter
+# -----------------------------------------------------------------------------
+regime_filter:
+  enabled: true
+  
+  # BULL regime conditions (ALL must be true)
+  bull_conditions:
+    spx_above_ma200: true         # SPX > 200-day MA
+    ret_6m_positive: true         # 6-month return > 0
+    ret_12m_positive: true        # 12-month return > 0
+    vix_below: 25                 # VIX < 25
+  
+  # HIGH_VOL regime
+  high_vol_conditions:
+    vix_above: 30                 # VIX >= 30
+  
+  # BEAR regime  
+  bear_conditions:
+    spx_below_ma200: true         # SPX < 200-day MA
+    ret_6m_negative: true         # 6-month return < 0
+  
+  # Default
+  default_regime: "NEUTRAL"
+
+# -----------------------------------------------------------------------------
+# Turbo AARM (Adaptive Asymmetric Risk Management)
+# -----------------------------------------------------------------------------
+turbo_aarm:
+  enabled: true
+  
+  # Leverage Parameters
+  base_leverage: 1.2              # Base position multiplier
+  max_leverage: 1.8               # Maximum allowed leverage
+  
+  # Volatility Targeting
+  target_volatility: 0.18         # 18% annualized target vol
+  lookback_days: 60               # Rolling window for vol calc
+  vol_floor: 0.5                  # Minimum vol scaling factor
+  vol_cap: 2.0                    # Maximum vol scaling factor
+  
+  # Circuit Breaker
+  cb_trigger: -0.06               # -6% drawdown triggers CB
+  cb_reduction_factor: 0.4        # Reduce position to 40% when CB active
+  
+  # Drawdown-Based Scaling (Progressive)
+  dd_thresholds:
+    - threshold: -0.05
+      multiplier: 0.9             # 90% at -5% DD
+    - threshold: -0.08
+      multiplier: 0.7             # 70% at -8% DD
+    - threshold: -0.10
+      multiplier: 0.5             # 50% at -10% DD
+    - threshold: -0.15
+      multiplier: 0.3             # 30% at -15% DD
+
+# -----------------------------------------------------------------------------
+# Transaction Costs
+# -----------------------------------------------------------------------------
+transaction_costs:
+  tc_bps: 10                      # 10 bps round-trip
+  slippage_bps: 5                 # 5 bps slippage estimate
+
+# -----------------------------------------------------------------------------
+# Ensemble Weights by Regime
+# -----------------------------------------------------------------------------
+ensemble:
+  engines:
+    - name: "qm"
+      description: "Quality-Momentum Engine"
+    - name: "defensive"
+      description: "Defensive/Low-Vol Engine"
+  
+  regime_weights:
+    BULL:
+      qm: 1.0
+      defensive: 0.0
+    BEAR:
+      qm: 0.6
+      defensive: 0.4
+    HIGH_VOL:
+      qm: 0.5
+      defensive: 0.5
+    NEUTRAL:
+      qm: 0.3
+      defensive: 0.7
+
+# -----------------------------------------------------------------------------
+# Risk Limits
+# -----------------------------------------------------------------------------
+risk_limits:
+  max_position_size: 0.10         # 10% max single position
+  max_sector_exposure: 0.30       # 30% max sector exposure
+  max_leverage: 2.0               # Hard leverage cap
+  daily_loss_limit: -0.03         # -3% daily loss limit
+  
+# -----------------------------------------------------------------------------
+# Execution
+# -----------------------------------------------------------------------------
+execution:
+  rebalance_frequency: "weekly"   # weekly, daily, monthly
+  rebalance_day: "friday"         # For weekly
+  execution_time: "15:30"         # 30 min before close
+  min_trade_value: 1000           # Minimum trade size in USD

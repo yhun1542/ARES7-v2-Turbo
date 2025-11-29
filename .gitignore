@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Data & Logs
+data/*.csv
+data/*.parquet
+logs/
+*.log
+audit_logs/
+reports/
+
+# State files
+state/
+*.json
+
+# Secrets
+.env
+*.key
+*.pem
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backups
+*.tar.gz
+*.zip
+setup_env_vars.sh
+*.key
+*secret*

@@ -1,0 +1,114 @@
+# =============================================================================
+# BROKER CONFIGURATION
+# =============================================================================
+# 모든 API 키/시크릿은 환경변수에서 로드
+# 절대 이 파일에 실제 값을 넣지 말 것!
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Interactive Brokers (IBKR)
+# -----------------------------------------------------------------------------
+ibkr:
+  enabled: true
+  mode: "paper"                    # paper, live
+  
+  # TWS/IB Gateway Connection
+  connection:
+    host_env: "IB_HOST"            # default: 127.0.0.1
+    port_env: "IB_PORT"            # default: 7497 (paper), 7496 (live)
+    client_id_env: "IB_CLIENT_ID"  # default: 1
+    timeout: 30
+    readonly: false
+  
+  # Client Portal Web API (Alternative)
+  client_portal:
+    enabled: false
+    base_url_env: "IBCP_BASE"      # default: https://127.0.0.1:5000/v1/api
+    ws_url_env: "IBCP_WS"          # default: wss://127.0.0.1:5000/v1/api/ws
+    verify_ssl: false
+  
+  # Account Settings
+  account:
+    account_id_env: "IB_ACCOUNT"   # Account ID
+    currency: "USD"
+    base_currency: "USD"
+  
+  # Order Settings
+  order_defaults:
+    exchange: "SMART"
+    time_in_force: "DAY"
+    outside_rth: false             # Regular trading hours only
+  
+  # Risk Controls
+  risk_controls:
+    max_order_value: 100000        # Max single order $100K
+    max_daily_orders: 100          # Max orders per day
+    position_limit_pct: 0.10       # 10% max single position
+
+# -----------------------------------------------------------------------------
+# Korea Investment & Securities (KIS / 한국투자증권)
+# -----------------------------------------------------------------------------
+kis:
+  enabled: true
+  mode: "paper"                    # paper, live
+  
+  # API Credentials (from env)
+  credentials:
+    app_key_env: "KIS_APP_KEY"
+    app_secret_env: "KIS_APP_SECRET"
+    account_no_env: "KIS_ACCOUNT_NO"
+    account_code_env: "KIS_ACCOUNT_CODE"  # 01: 주식, 02: 선물옵션
+  
+  # API Endpoints
+  endpoints:
+    base_url_paper: "https://openapivts.koreainvestment.com:29443"
+    base_url_live: "https://openapi.koreainvestment.com:9443"
+    websocket_paper: "ws://ops.koreainvestment.com:21000"
+    websocket_live: "ws://ops.koreainvestment.com:31000"
+  
+  # Token Management
+  token:
+    refresh_before_mins: 30        # Refresh token 30 min before expiry
+    cache_path: "/tmp/kis_token.json"
+  
+  # Market Settings
+  market:
+    exchange: "KRX"
+    currency: "KRW"
+    trading_hours:
+      pre_market: "08:30-09:00"
+      regular: "09:00-15:30"
+      after_hours: "15:40-18:00"
+  
+  # Order Settings
+  order_defaults:
+    order_type: "00"               # 지정가
+    time_in_force: "DAY"
+  
+  # Risk Controls
+  risk_controls:
+    max_order_value_krw: 100_000_000  # Max 1억원
+    max_daily_orders: 50
+
+# -----------------------------------------------------------------------------
+# Common Settings
+# -----------------------------------------------------------------------------
+common:
+  # Retry Policy
+  retry:
+    max_retries: 3
+    retry_delay_sec: 2
+    exponential_backoff: true
+  
+  # Logging
+  logging:
+    level: "INFO"
+    log_orders: true
+    log_fills: true
+    log_positions: true
+  
+  # Health Check
+  health_check:
+    enabled: true
+    interval_sec: 60
+    reconnect_on_failure: true

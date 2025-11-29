@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ARES ALPHA (v2.4)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        /* --- 1. Typography --- */
+        @font-face { font-family: 'GmarketSans'; font-weight: 700; src: url('/static/fonts/GmarketSansBold.otf'); }
+        @font-face { font-family: 'GmarketSans'; font-weight: 500; src: url('/static/fonts/GmarketSansMedium.otf'); }
+        @font-face { font-family: 'GmarketSans'; font-weight: 300; src: url('/static/fonts/GmarketSansLight.otf'); }
+
+        :root {
+            --bg-app: #0b0c10;
+            --bg-panel: #14161b;
+            --border: #2a2e38;
+            --border-light: rgba(255,255,255,0.08);
+            
+            --text-primary: #ffffff;
+            --text-secondary: #aab2bd;
+            --text-label: #656d78;
+            
+            --accent-primary: #00bcd4; 
+            
+            --color-up: #ff4757;       
+            --color-down: #2e86de;     
+            --color-safe: #2ecc71;
+            --color-warn: #f1c40f;
+            --color-danger: #ff6b6b;
+
+            --radius: 12px;
+        }
+
+        [data-theme="light"] {
+            --bg-app: #f0f2f5;
+            --bg-panel: #ffffff;
+            --border: #d1d5db;
+            --border-light: rgba(0,0,0,0.05);
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --text-label: #9ca3af;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: 'GmarketSans', sans-serif;
+            background-color: var(--bg-app);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            font-size: 16px; 
+        }
+
+        /* --- 2. Layout --- */
+        .app-container {
+            max-width: 1920px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .app-container { display: flex; flex-direction: column; gap: 16px; padding: 12px; }
+        }
+
+        /* --- 3. Header --- */
+        header {
+            grid-column: span 12;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 10px 16px 10px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 5px;
+        }
+        
+        .brand { 
+            font-size: 2.2rem; font-weight: 800; 
+            display: flex; align-items: center; gap: 12px; 
+            color: #ffffff !important; 
+            letter-spacing: -1px;
+        }
+        .brand span { color: #ffffff !important; }
+        .brand::before { content:''; display:block; width:14px; height:14px; background:var(--accent-primary); border-radius:50%; box-shadow: 0 0 15px var(--accent-primary); }
+        
+        .header-right { display: flex; align-items: center; gap: 24px; }
+        .header-controls { display: flex; gap: 12px; align-items: center; }
+        
+        .control-btn {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+            padding: 8px 16px; border-radius: 24px;
+            font-size: 1rem; font-weight: 500; color: var(--text-primary);
+            cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center;
+        }
+        .control-btn:hover { background: rgba(255,255,255,0.1); }
+        .control-btn.active { background: var(--accent-primary); color: #000; border-color: var(--accent-primary); font-weight: 700;}
+
+        .clock-container { 
+            display: flex; flex-direction: column; align-items: flex-end; justify-content: center;
+            padding-left: 20px; border-left: 1px solid var(--border);
+            min-width: 160px;
+            gap: 6px;
+        }
+        .clock-row { font-family: 'GmarketSans'; display: flex; align-items: center; gap: 10px; }
+        .time-text { font-size: 1.25rem; font-weight: 700; letter-spacing: 0.5px; }
+        .text-bright { color: var(--text-primary); }
+        .text-dark { color: #50555e; } 
+        .tz-tag { font-size: 0.75rem; font-weight: 700; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; color: var(--text-label); min-width: 36px; text-align: center;}
+
+        @media (max-width: 768px) {
+            header { flex-direction: column; align-items: flex-start; gap: 16px; }
+            .header-right { width: 100%; justify-content: space-between; }
+            .clock-container { border-left: none; padding-left: 0; align-items: flex-end; }
+        }
+
+        /* --- 4. Cards Common --- */
+        .card { 
+            background: var(--bg-panel); border-radius: var(--radius); 
+            border: 1px solid var(--border); 
+            display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        .section-title { 
+            padding: 16px 24px; background: rgba(0,0,0,0.15);
+            font-size: 1.1rem; font-weight: 700; color: var(--text-label); letter-spacing: 0.5px;
+            display: flex; justify-content: space-between; align-items: center;
+            flex-shrink: 0; 
+        }
+
+        /* --- 5. HERO SECTION --- */
+        .hero-section { 
+            grid-column: span 12; height: 180px; 
+            display: grid; 
+            grid-template-columns: 1fr 1fr 1fr 1fr; 
+            padding: 0; 
+        }
+        
+        .hero-item {
+            height: 100%;
+            display: flex; flex-direction: column; 
+            justify-content: center; align-items: center;
+            border-right: 1px solid var(--border-light);
+            position: relative;
+        }
+        .hero-item:last-child { border-right: none; }
+
+        .hero-label { 
+            color: var(--text-label); font-size: 1.05rem; margin-bottom: 12px; font-weight: 500; letter-spacing: 0.5px; text-align: center;
+        }
+        .hero-row { display: flex; align-items: baseline; gap: 8px; }
+        .hero-val { 
+            font-size: 2.8rem; 
+            font-weight: 700; letter-spacing: -1px; line-height: 1; 
+            color: var(--text-primary); 
+        }
+        .hero-unit { font-size: 1.2rem; font-weight: 500; color: var(--text-secondary); }
+        .hero-sub { 
+            font-size: 1.1rem; font-weight: 500; margin-top: 8px; 
+            display: flex; align-items: center; gap: 6px; opacity: 0.9; 
+        }
+
+        @media (max-width: 1280px) { .hero-val { font-size: 2.2rem; } }
+        @media (max-width: 1024px) {
+            .hero-section { display: grid; grid-template-columns: 1fr 1fr; height: auto; }
+            .hero-item { height: 160px; border-bottom: 1px solid var(--border-light); }
+            .hero-item:nth-child(2) { border-right: none; }
+            .hero-item:nth-child(3), .hero-item:nth-child(4) { border-bottom: none; }
+        }
+
+        /* --- 6. Chart Area --- */
+        .chart-card { 
+            grid-column: span 8; 
+            height: 500px; 
+            display: flex; flex-direction: column; 
+        }
+        .chart-wrapper { 
+            flex: 1 1 auto; width: 100%; min-height: 0; position: relative; 
+        }
+        canvas { display: block; width: 100% !important; height: 100% !important; }
+
+        @media (max-width: 1024px) { .chart-card { grid-column: span 12; height: 340px; } }
+
+        /* --- 7. Risk Metrics (SPACING FIXED) --- */
+        .risk-container { 
+            grid-column: span 4; 
+            display: grid; grid-template-rows: auto 1fr; gap: 20px; 
+        }
+        .risk-box {
+            background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius);
+            padding: 30px 24px; display: flex; flex-direction: column; 
+            height: 100%; min-height: 200px;
+        }
+
+        /* [핵심 수정] Regime Card: Center 정렬 + 강제 마진 사용 */
+        .risk-box.regime-card {
+            justify-content: center; /* 중앙 정렬로 변경 */
+            /* 패딩은 유지하되 space-between을 제거하여 margin으로 제어 */
+        }
+        
+        .regime-header { 
+            font-size: 1.1rem; color: var(--text-label); text-align: center; 
+            /* 헤더는 그대로 둠 */
+        }
+        
+        /* [핵심 수정] Badge: 위아래 마진 30px 강제 적용 (선이랑 띄우기) */
+        .regime-badge {
+            text-align: center; 
+            padding: 10px 0; /* 내부 패딩 작게 (박스 타이트하게) */
+            border-radius: 12px;
+            font-size: 2.8rem; font-weight: 800; 
+            border: 2px solid transparent;
+            margin: 30px 0; /* [변경] auto -> 30px (위아래 확실한 공간 확보) */
+        }
+        
+        .regime-BULL { border-color: var(--color-up); color: var(--color-up); background: rgba(255, 71, 87, 0.05); }
+        .regime-BEAR { border-color: var(--color-down); color: var(--color-down); background: rgba(46, 134, 222, 0.05); }
+        .regime-NEUTRAL { border-color: var(--text-secondary); color: var(--text-secondary); background: rgba(255,255,255,0.02); }
+        
+        .vix-guard { text-align: center; font-size: 1.1rem; color: var(--text-secondary); }
+
+        .metrics-grid { 
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; height: 100%; 
+            align-content: center; 
+        }
+        .metric {
+            background: rgba(255,255,255,0.02); border-radius: 8px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 16px;
+        }
+        .metric-lbl { font-size: 1rem; color: var(--text-label); margin-bottom: 6px; }
+        .metric-val { font-size: 1.7rem; font-weight: 700; }
+
+        @media (max-width: 1024px) { .risk-container { grid-column: span 12; grid-template-rows: auto; grid-template-columns: 1fr 1fr; } }
+
+        /* --- 8. Tables --- */
+        .table-card { grid-column: span 6; height: 420px; display: flex; flex-direction: column; }
+        .table-wrap { flex: 1; overflow-y: auto; padding-right: 6px; }
+        .table-wrap::-webkit-scrollbar { width: 14px; background: rgba(255,255,255,0.02); }
+        .table-wrap::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.15); border-radius: 7px; border: 3px solid var(--bg-panel); }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 1.1rem; }
+        th { 
+            position: sticky; top: 0; background: var(--bg-panel); z-index: 5;
+            padding: 18px 4px; border-bottom: 1px solid var(--border);
+            color: var(--text-label); font-weight: 500; font-size: 0.95rem; text-align: center;
+        }
+        td { padding: 18px 4px; border-bottom: 1px solid var(--border-light); font-weight: 500; text-align: center; vertical-align: middle; }
+        
+        .td-main { font-weight: 700; color: var(--text-primary); font-size: 1.15rem; }
+        .td-sub { color: var(--text-label); font-size: 1.0rem; }
+        .al { text-align: left !important; padding-left: 32px !important; }
+        .ar { text-align: right !important; padding-right: 32px !important; }
+
+        @media (max-width: 1024px) { .table-card { grid-column: span 12; } }
+
+        /* --- 9. Footer --- */
+        .footer-bar {
+            grid-column: span 12;
+            background: rgba(20, 20, 25, 0.95); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 20px 32px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .status-group { display: flex; align-items: center; gap: 14px; }
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--color-safe); box-shadow: 0 0 12px var(--color-safe); }
+        .status-text { font-weight: 700; color: var(--text-primary); font-size: 1.2rem; }
+        
+        .ks-wrapper { display: flex; align-items: center; gap: 24px; }
+        .ks-label-text { font-size: 1.2rem; font-weight: 800; color: var(--color-danger); letter-spacing: 1px; }
+        .ks-controls { display: flex; gap: 12px; }
+        button { border: none; padding: 12px 24px; border-radius: 8px; font-family: 'GmarketSans'; font-weight: 700; cursor: pointer; font-size: 1rem; }
+        .btn-norm { background: rgba(46, 204, 113, 0.15); color: var(--color-safe); border: 1px solid rgba(46, 204, 113, 0.3); }
+        .btn-norm.active { background: var(--color-safe); color: #000; }
+        .btn-stop { background: rgba(241, 196, 15, 0.15); color: var(--color-warn); border: 1px solid rgba(241, 196, 15, 0.3); }
+        .btn-halt { background: rgba(255, 107, 107, 0.15); color: var(--color-danger); border: 1px solid rgba(255, 107, 107, 0.3); }
+        .btn-halt:hover { background: var(--color-danger); color: #fff; }
+
+        @media (max-width: 768px) {
+            .footer-bar { flex-direction: column; gap: 16px; text-align: center; }
+            .ks-controls { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+            .btn-halt { grid-column: span 2; }
+        }
+
+        /* Utils */
+        .up { color: var(--color-up) !important; }
+        .down { color: var(--color-down) !important; }
+        .neutral { color: var(--text-secondary) !important; }
+        .badge { padding: 4px 12px; border-radius: 6px; font-size: 0.95rem; font-weight: 700; }
+        .bg-up { background: rgba(255, 71, 87, 0.15); color: var(--color-up); }
+        .bg-down { background: rgba(46, 134, 222, 0.15); color: var(--color-down); }
+
+    </style>
+</head>
+<body data-theme="dark">
+
+    <div class="app-container">
+        
+        <header>
+            <div class="brand">ARES ALPHA</div>
+            
+            <div class="header-right">
+                <div class="header-controls">
+                    <div class="control-btn" onclick="toggleTheme()">
+                        <span id="theme-icon">🌙</span>
+                    </div>
+                    <div class="control-btn" onclick="toggleCurrency()" id="currency-btn">
+                        <span>🔄</span>
+                        <span id="rate-text" style="margin-left:8px; font-size:1rem;">1 USD = 1,435 KRW</span>
+                    </div>
+                </div>
+
+                <div class="clock-container">
+                    <div class="clock-row">
+                        <span class="time-text text-bright" id="clock-nyt">00:00:00</span>
+                        <span class="tz-tag">NYT</span>
+                    </div>
+                    <div class="clock-row">
+                        <span class="time-text text-dark" id="clock-kst">00:00:00</span>
+                        <span class="tz-tag tz-active">KST</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="card hero-section">
+            <div class="hero-item">
+                <div class="hero-label">TOTAL EQUITY VALUE</div>
+                <div class="hero-row">
+                    <span class="hero-val" id="equity-val">--</span>
+                    <span class="hero-unit" id="equity-unit">USD</span>
+                </div>
+            </div>
+            <div class="hero-item">
+                <div class="hero-label">TOTAL EQUITY P&L</div>
+                <div class="hero-row">
+                    <span class="hero-val" id="total-pnl-val">--</span>
+                    <span class="hero-unit" id="total-pnl-unit">USD</span>
+                </div>
+            </div>
+            <div class="hero-item">
+                <div class="hero-label">TODAY P&L</div>
+                <div class="hero-row">
+                    <span class="hero-val" id="today-val">--</span>
+                    <span class="hero-unit" id="today-unit">USD</span>
+                </div>
+                <div class="hero-sub">
+                    <span id="today-pct">--%</span>
+                </div>
+            </div>
+            <div class="hero-item">
+                <div class="hero-label">THIS MONTH P&L</div>
+                <div class="hero-row">
+                    <span class="hero-val" id="month-val">--</span>
+                    <span class="hero-unit" id="month-unit">USD</span>
+                </div>
+                <div class="hero-sub">
+                    <span id="month-pct">--%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card chart-card">
+            <div class="section-title">
+                <span>ASSET TREND</span>
+                <span class="neutral" style="font-weight:400; font-size:0.95rem;">LIVE UPDATE</span>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="mainChart"></canvas>
+            </div>
+        </div>
+
+        <div class="risk-container">
+            <div class="risk-box regime-card">
+                <div class="regime-header">MARKET REGIME</div>
+                <div id="regime-box" class="regime-badge regime-NEUTRAL">NEUTRAL</div>
+                <div class="vix-guard">
+                    VIX Guard: <span id="vix-guard" style="color:var(--text-primary); font-weight:700;">OFF</span>
+                </div>
+            </div>
+            <div class="risk-box" style="justify-content: center;">
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <span class="metric-lbl">MDD</span>
+                        <span class="metric-val down" id="mdd-val">0.0%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-lbl">Leverage</span>
+                        <span class="metric-val" id="lev-val">1.0x</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-lbl">Net Exp</span>
+                        <span class="metric-val" id="net-exp">0%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-lbl">Cash</span>
+                        <span class="metric-val neutral" id="cash-val">0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card table-card">
+            <div class="section-title">ACTIVE POSITIONS</div>
+            <div class="table-wrap">
+                <table>
+                    <colgroup>
+                        <col style="width: 22%;">
+                        <col style="width: 16%;">
+                        <col style="width: 17%;">
+                        <col style="width: 20%;">
+                        <col style="width: 25%;">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th class="al">ASSET</th>
+                            <th class="al" style="padding-left:10px !important;">WEIGHT</th>
+                            <th>SHARES</th>
+                            <th>PRICE</th>
+                            <th class="ar">VALUE (<span class="currency-label">USD</span>)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pos-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card table-card">
+            <div class="section-title">RECENT ACTIVITIES</div>
+            <div class="table-wrap">
+                <table>
+                    <colgroup>
+                        <col style="width: 20%;">
+                        <col style="width: 15%;">
+                        <col style="width: 15%;">
+                        <col style="width: 18%;">
+                        <col style="width: 17%;">
+                        <col style="width: 15%;">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th class="al">TIME</th>
+                            <th>SYMBOL</th>
+                            <th>ACTION</th>
+                            <th>PRICE</th>
+                            <th>CUR. PRICE</th>
+                            <th class="ar">ROI</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trade-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="footer-bar">
+            <div class="status-group">
+                <div class="status-dot"></div>
+                <span style="font-size:1.1rem; color:var(--text-label);">SYSTEM:</span>
+                <span class="status-text" id="ks-display" style="color:var(--color-safe)">OPERATIONAL</span>
+            </div>
+            
+            <div class="ks-wrapper">
+                <span class="ks-label-text">KILLING SWITCH</span>
+                <div class="ks-controls">
+                    <button class="btn-norm active" onclick="setKillSwitch('RUNNING')">NORMAL</button>
+                    <button class="btn-stop" onclick="setKillSwitch('STOP_NEW_ORDERS')">PAUSE</button>
+                    <button class="btn-halt" onclick="emergencyExit()">HALT</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const CONFIG = {
+            exchangeRate: 1435.0, 
+            isKRW: false,
+            isDark: true
+        };
+
+        function getMockData() {
+            return {
+                timestamp: new Date().toISOString(),
+                equity: 108500.50,
+                todays_pnl: 1250.20,
+                todays_return: 0.0116,
+                month_pnl: 4250.80,
+                month_return: 0.041,
+                cum_pnl: 8500.50,
+                current_dd: -0.045,
+                current_leverage: 1.35,
+                net_exposure: 0.65,
+                gross_exposure: 0.9,
+                regime: 'BULL',
+                equity_curve: [105000, 105500, 104800, 106000, 107200, 106800, 108500],
+                times: ['09:30', '10:30', '11:30', '12:30', '13:30', '14:30', '15:30'],
+                top_positions: [
+                    {symbol: 'TQQQ', weight: 0.35, shares: 607, price: 62.50, value: 37975, pnl_pct: 0.15},
+                    {symbol: 'SOXL', weight: 0.25, shares: 793, price: 34.20, value: 27125, pnl_pct: -0.05},
+                    {symbol: 'NVDA', weight: 0.20, shares: 23, price: 920.00, value: 21700, pnl_pct: 0.42},
+                    {symbol: 'MSFT', weight: 0.10, shares: 26, price: 415.50, value: 10850, pnl_pct: 0.02},
+                    {symbol: 'AAPL', weight: 0.10, shares: 62, price: 175.20, value: 10850, pnl_pct: -0.01},
+                ],
+                recent_trades: [
+                    {time: '14:45:00', symbol: 'TQQQ', side: 'BUY', price: 62.10, cur_price: 62.50, roi: 0.0064},
+                    {time: '13:20:15', symbol: 'SOXL', side: 'SELL', price: 34.50, cur_price: 34.20, roi: -0.0087},
+                    {time: '11:10:05', symbol: 'NVDA', side: 'BUY', price: 910.00, cur_price: 920.00, roi: 0.0109},
+                    {time: '10:05:22', symbol: 'MSFT', side: 'BUY', price: 412.00, cur_price: 415.50, roi: 0.0085},
+                    {time: '09:30:00', symbol: 'AAPL', side: 'SELL', price: 176.00, cur_price: 175.20, roi: 0.0045},
+                ],
+                kill_switch: 'RUNNING'
+            };
+        }
+
+        const fmtPct = n => (n * 100).toFixed(2) + '%';
+        const getColorClass = n => n > 0 ? 'up' : (n < 0 ? 'down' : 'neutral');
+        
+        function fmtInt(valUSD) {
+            let val = valUSD;
+            if (CONFIG.isKRW) val = valUSD * CONFIG.exchangeRate;
+            return new Intl.NumberFormat(CONFIG.isKRW ? 'ko-KR' : 'en-US', { maximumFractionDigits: 0 }).format(Math.round(val));
+        }
+
+        function fmtMoney(valUSD) {
+            if (CONFIG.isKRW) {
+                const valKRW = valUSD * CONFIG.exchangeRate;
+                return new Intl.NumberFormat('ko-KR').format(Math.round(valKRW));
+            } else {
+                return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(valUSD);
+            }
+        }
+
+        function fmtPrice(valUSD) {
+            if (CONFIG.isKRW) {
+                return new Intl.NumberFormat('ko-KR').format(Math.round(valUSD * CONFIG.exchangeRate));
+            }
+            return valUSD.toFixed(2);
+        }
+
+        function toggleCurrency() {
+            CONFIG.isKRW = !CONFIG.isKRW;
+            const btn = document.getElementById('currency-btn');
+            if (CONFIG.isKRW) btn.classList.add('active');
+            else btn.classList.remove('active');
+            render(currentData);
+        }
+
+        function toggleTheme() {
+            CONFIG.isDark = !CONFIG.isDark;
+            const body = document.body;
+            const icon = document.getElementById('theme-icon');
+            if (CONFIG.isDark) {
+                body.setAttribute('data-theme', 'dark');
+                icon.innerText = '🌙';
+            } else {
+                body.setAttribute('data-theme', 'light');
+                icon.innerText = '☀️';
+            }
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const kstTime = now.toLocaleTimeString('en-US', { hour12: false, timeZone: 'Asia/Seoul' });
+            document.getElementById('clock-kst').innerText = kstTime;
+            
+            const nytTime = now.toLocaleTimeString('en-US', { hour12: false, timeZone: 'America/New_York' });
+            document.getElementById('clock-nyt').innerText = nytTime;
+        }
+
+        let mainChart;
+        function initChart() {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            let gradient = ctx.createLinearGradient(0, 0, 0, 400); 
+            gradient.addColorStop(0, 'rgba(0, 188, 212, 0.2)');
+            gradient.addColorStop(1, 'rgba(0, 188, 212, 0)');
+
+            mainChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels: [], datasets: [{ data: [], borderColor: '#00bcd4', backgroundColor: gradient, borderWidth: 2, pointRadius: 0, fill: true, tension: 0.4 }] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, 
+                    layout: {
+                        padding: {
+                            left: 0,
+                            right: 40,
+                            top: 10,
+                            bottom: 0 
+                        }
+                    },
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { 
+                            display: true, 
+                            grid: { display: false },
+                            ticks: { 
+                                color: '#656d78', 
+                                font: { family: 'GmarketSans', size: 11 },
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 6
+                            }
+                        },
+                        y: { 
+                            position: 'right', 
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { 
+                                color: '#656d78', 
+                                font: { family: 'GmarketSans', size: 12 },
+                                padding: 10,
+                                callback: function(value) { return CONFIG.isKRW ? (value/1000000).toFixed(0)+'M' : value/1000+'k'; }
+                            }
+                        }
+                    },
+                    interaction: { mode: 'index', intersect: false },
+                    animation: false
+                }
+            });
+        }
+
+        let currentData = null;
+
+        function render(data) {
+            currentData = data;
+            const unit = CONFIG.isKRW ? 'KRW' : 'USD';
+            
+            updateClock();
+            document.querySelectorAll('.currency-label').forEach(el => el.innerText = unit);
+
+            document.getElementById('equity-val').innerText = fmtInt(data.equity);
+            document.getElementById('equity-unit').innerText = unit;
+
+            const totPnlVal = document.getElementById('total-pnl-val');
+            totPnlVal.innerText = (data.cum_pnl > 0 ? '+' : '') + fmtInt(data.cum_pnl);
+            totPnlVal.className = `hero-val ${getColorClass(data.cum_pnl)}`;
+            document.getElementById('total-pnl-unit').innerText = unit;
+
+            const setPnl = (idVal, idPct, idUnit, val, pct) => {
+                const elVal = document.getElementById(idVal);
+                elVal.innerText = (val > 0 ? '+' : '') + fmtMoney(val);
+                elVal.className = `hero-val ${getColorClass(val)}`;
+                
+                const elPct = document.getElementById(idPct);
+                elPct.innerText = (pct > 0 ? '▲' : '▼') + ' ' + fmtPct(Math.abs(pct));
+                elPct.className = getColorClass(pct);
+                
+                document.getElementById(idUnit).innerText = unit;
+            };
+            setPnl('today-val', 'today-pct', 'today-unit', data.todays_pnl, data.todays_return);
+            setPnl('month-val', 'month-pct', 'month-unit', data.month_pnl, data.month_return);
+
+            if(mainChart) {
+                const chartData = data.equity_curve.map(v => CONFIG.isKRW ? v * CONFIG.exchangeRate : v);
+                mainChart.data.labels = data.times; 
+                mainChart.data.datasets[0].data = chartData;
+                mainChart.update();
+            }
+
+            document.getElementById('mdd-val').innerText = fmtPct(data.current_dd);
+            document.getElementById('lev-val').innerText = data.current_leverage.toFixed(2) + 'x';
+            document.getElementById('net-exp').innerText = fmtPct(data.net_exposure);
+            document.getElementById('cash-val').innerText = fmtPct(1 - data.gross_exposure);
+            
+            const rBox = document.getElementById('regime-box');
+            rBox.innerText = data.regime;
+            rBox.className = `regime-badge regime-${data.regime}`;
+
+            const posBody = document.getElementById('pos-tbody');
+            posBody.innerHTML = data.top_positions.map(p => `
+                <tr>
+                    <td class="al td-main">${p.symbol}</td>
+                    <td class="al" style="padding-left:10px !important;">${fmtPct(p.weight)}</td>
+                    <td>${p.shares.toLocaleString()}</td>
+                    <td>${fmtPrice(p.price)}</td>
+                    <td class="ar">${fmtMoney(p.value)}</td>
+                </tr>
+            `).join('');
+
+            const trdBody = document.getElementById('trade-tbody');
+            trdBody.innerHTML = data.recent_trades.slice(0,10).map(t => `
+                <tr>
+                    <td class="al td-sub">${t.time}</td>
+                    <td class="td-main">${t.symbol}</td>
+                    <td><span class="badge ${t.side==='BUY'?'bg-up':'bg-down'}">${t.side}</span></td>
+                    <td>${fmtPrice(t.price)}</td>
+                    <td>${fmtPrice(t.cur_price)}</td>
+                    <td class="ar ${getColorClass(t.roi)}">${fmtPct(t.roi)}</td>
+                </tr>
+            `).join('');
+            
+            const ks = document.getElementById('ks-display');
+            ks.innerText = data.kill_switch;
+            ks.style.color = data.kill_switch === 'RUNNING' ? 'var(--color-safe)' : 'var(--color-danger)';
+        }
+
+        async function setKillSwitch(mode) {
+            try {
+                const response = await fetch('/kill_switch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: mode })
+                });
+                const result = await response.json();
+                console.log("KS ->", result);
+            } catch (err) {
+                console.error("Kill switch error:", err);
+            }
+        }
+        
+        function emergencyExit() { 
+            if(confirm("CONFIRM HALT?")) setKillSwitch('FULL_EXIT'); 
+        }
+
+        async function fetchStatus() {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+                render(data);
+            } catch (err) {
+                console.error("Fetch status error:", err);
+                render(getMockData());
+            }
+        }
+
+        initChart();
+        render(getMockData());
+        
+        // 1초마다 상태 업데이트
+        setInterval(fetchStatus, 1000);
+
+    </script>
+</body>
+</html>
