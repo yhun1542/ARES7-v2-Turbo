@@ -1,0 +1,155 @@
+# ARES7 v2 Turbo - Production Configuration
+# Final optimized settings (v5)
+
+# ============================================================================
+# Performance Targets (v5 Optimized)
+# ============================================================================
+performance:
+  target_sharpe: 3.08
+  target_return: 0.446
+  target_volatility: 0.145
+  max_drawdown: -0.063
+  target_calmar: 7.06
+
+# ============================================================================
+# Portfolio Construction
+# ============================================================================
+portfolio:
+  # Universe Selection
+  universe:
+    top_k: 70  # Select top 70 stocks by alpha signal
+    sector_cap: 0.25  # Max 25% per sector
+    min_signal: 0.0  # Minimum alpha signal threshold
+  
+  # Weight Blending
+  blending:
+    hrp_weight: 0.75  # HRP (risk parity) 75%
+    alpha_weight: 0.25  # softmax(alpha) 25%
+  
+  # Risk Targeting
+  risk:
+    target_volatility: 0.145  # 14.5% annual volatility
+    leverage_max: 1.0  # No leverage
+    turnover_cap: 0.30  # Max 30% turnover
+
+# ============================================================================
+# Guardrails (v3 Relaxed)
+# ============================================================================
+guardrails:
+  # Beta Band (relaxed)
+  beta_min: 0.34
+  beta_max: 0.66
+  beta_hysteresis: 0.01  # Hysteresis to reduce false triggers
+  
+  # Drawdown Guard
+  dd_threshold: 0.12  # -12% max drawdown
+  dd_scale_min: 0.5  # Min 50% position scaling
+  
+  # Turnover Cap
+  turnover_cap: 0.30  # 30% max turnover
+  
+  # Volatility Targeting
+  vol_target: 0.145  # 14.5% target
+  vol_scale_min: 0.8  # Min 80% scaling
+  vol_scale_max: 1.2  # Max 120% scaling
+
+# ============================================================================
+# Alpha Signals
+# ============================================================================
+alpha:
+  # Main Alpha Weights (optimized)
+  weights:
+    momentum: 0.4068
+    value: 0.3099
+    technical: 0.2365
+    quality: 0.0468
+  
+  # Sideways Regime Alpha (conditional)
+  sideways:
+    enabled: true
+    zscore_window: 20
+    zscore_threshold: 1.5
+    rsi_window: 14
+    rsi_oversold: 30
+    rsi_overbought: 70
+    blend_weight: 0.3  # 30% when activated
+
+# ============================================================================
+# Rebalancing
+# ============================================================================
+rebalancing:
+  frequency: weekly  # Weekly rebalancing
+  day_of_week: monday  # Monday 9:30 AM
+  time: "09:30"
+  timezone: "America/New_York"
+
+# ============================================================================
+# Data Sources
+# ============================================================================
+data:
+  primary: polygon  # Polygon.io
+  backup: yahoo  # Yahoo Finance (fallback)
+  update_frequency: daily
+  cache_days: 30
+
+# ============================================================================
+# Monitoring & Alerts
+# ============================================================================
+monitoring:
+  api_port: 8000
+  update_interval: 60  # seconds
+  
+  alerts:
+    email_enabled: true
+    slack_enabled: false
+    
+    triggers:
+      - type: drawdown
+        threshold: -0.10  # Alert at -10% DD
+      - type: sharpe_drop
+        threshold: 2.5  # Alert if Sharpe < 2.5
+      - type: position_error
+        threshold: 0.05  # Alert if position error > 5%
+
+# ============================================================================
+# Governance & Audit
+# ============================================================================
+governance:
+  # Monthly Validation (DSR/SPA)
+  monthly_validation:
+    enabled: true
+    day_of_month: 1
+    time: "09:00"
+  
+  # Weekly Capacity Check
+  weekly_capacity_check:
+    enabled: true
+    day_of_week: monday
+    time: "10:00"
+  
+  # Audit Trail
+  audit:
+    log_all_rebalances: true
+    include_git_sha: true
+    include_config_sha: true
+    log_directory: "rebalance_logs"
+  
+  # Dead-man Switch
+  dead_man_switch:
+    enabled: true
+    check_interval: 3600  # 1 hour
+    max_silence: 86400  # 24 hours
+    emergency_actions:
+      - liquidate_positions
+      - send_alert
+      - enter_safe_mode
+
+# ============================================================================
+# Logging
+# ============================================================================
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/ares7.log"
+  max_bytes: 10485760  # 10MB
+  backup_count: 10
